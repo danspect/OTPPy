@@ -37,9 +37,27 @@ def encrypt(
 
 def main() -> None:
     argc = len(sys.argv)
-    if argc <= 2:
+    if argc != 5:
         print(USAGE)
         sys.exit(1)
+
+    mode = sys.argv[1]
+    key_path = Path(sys.argv[2])
+    encrypted_path = Path(sys.argv[3])
+    plain_path = Path(sys.argv[4])
+
+    if mode == "-e":
+        with open(plain_path, "rb") as plain_file, \
+            open(key_path, "wb") as key_file, \
+            open(encrypted_path, "wb") as enc_file:
+
+            encrypt(plain_file, key_file, enc_file)
+    if mode == "-d":
+        with open(plain_path, "wb") as plain_file, \
+            open(key_path, "rb") as key_file, \
+            open(encrypted_path, "rb") as enc_file:
+
+            decrypt(enc_file, key_file, plain_file)
 
 
 if __name__ == "__main__":

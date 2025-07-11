@@ -1,7 +1,7 @@
-import sys
-from pathlib import Path
 import os
-from io import BufferedReader, BufferedWriter, DEFAULT_BUFFER_SIZE
+import sys
+from io import DEFAULT_BUFFER_SIZE, BufferedReader, BufferedWriter
+from pathlib import Path
 
 USAGE = """
 python3 otp.py -[e|d] <input_file> <key_file> <output_file>
@@ -16,7 +16,7 @@ def decrypt(
 ) -> None:
     while enc_chunk := enc_file.read(DEFAULT_BUFFER_SIZE):
         key_c = key_in.read(len(enc_chunk))
-        if not key_c or len(key_c) < len(enc_chunk):
+        if len(key_c) != len(enc_chunk):
             raise ValueError("Key file is shorter than encrypted file.")
 
         plain = bytes(a ^ b for a, b in zip(key_c, enc_chunk))
@@ -48,19 +48,19 @@ def main() -> None:
     # fmt: off
     if mode == "-e":
 
-        with open(input_path, "rb") as plain_file, \
+        with open(input_path, "rb") as input_file, \
             open(key_path, "wb") as key_file, \
-            open(output_path, "wb") as enc_file:
+            open(output_path, "wb") as output_file:
 
-            encrypt(plain_file, key_file, enc_file)
+            encrypt(input_file, key_file, output_file)
 
     elif mode == "-d":
 
-        with open(input_path, "wb") as plain_file, \
+        with open(input_path, "rb") as input_file, \
             open(key_path, "rb") as key_file, \
-            open(output_path, "rb") as enc_file:
+            open(output_path, "wb") as output_file:
 
-            decrypt(enc_file, key_file, plain_file)
+            decrypt(input_file, key_file, output_file)
     # fmt: on
 
     else:

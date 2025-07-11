@@ -1,11 +1,10 @@
 import sys
-from sys import byteorder as SYS_BYTEORDER
 from pathlib import Path
-import secrets
-from io import BufferedReader, BufferedWriter
+import os
+from io import BufferedReader, BufferedWriter, DEFAULT_BUFFER_SIZE
 
 USAGE = """
-python3 otp.py -[d|e] [key] [encrypted] [plain]
+python3 otp.py -[e|d] <input_file> <key_file> <output_file>
 
 -d: decrypt
 -e: encrypt
@@ -15,24 +14,24 @@ python3 otp.py -[d|e] [key] [encrypted] [plain]
 def decrypt(
     enc_file: BufferedReader, key_in: BufferedReader, plain_file: BufferedWriter
 ) -> None:
-    while enc_chunk := enc_file.read(1):
-        key_c = key_in.read(1)
-        if not key_c:
+    while enc_chunk := enc_file.read(DEFAULT_BUFFER_SIZE):
+        key_c = key_in.read(len(enc_chunk))
+        if not key_c or len(key_c) < len(enc_chunk):
             raise ValueError("Key file is shorter than encrypted file.")
 
-        plain = key_c[0] ^ enc_chunk[0]
-        plain_file.write(plain.to_bytes(1, SYS_BYTEORDER))
+        plain = bytes(a ^ b for a, b in zip(key_c, enc_chunk))
+        plain_file.write(plain)
 
 
 def encrypt(
     plain_file: BufferedReader, key_out: BufferedWriter, enc_file: BufferedWriter
 ) -> None:
-    while chunk := plain_file.read(1):
-        key = secrets.randbits(8)
-        enc_c = key ^ chunk[0]
+    while chunk := plain_file.read(DEFAULT_BUFFER_SIZE):
+        key = os.urandom(len(chunk))
+        enc_c = bytes(a ^ b for a, b in zip(chunk, key))
 
-        enc_file.write(enc_c.to_bytes(1, SYS_BYTEORDER))
-        key_out.write(key.to_bytes(1, SYS_BYTEORDER))
+        enc_file.write(enc_c)
+        key_out.write(key)
 
 
 def main() -> None:
@@ -42,22 +41,32 @@ def main() -> None:
         sys.exit(1)
 
     mode = sys.argv[1]
-    key_path = Path(sys.argv[2])
-    encrypted_path = Path(sys.argv[3])
-    plain_path = Path(sys.argv[4])
+    key_path = Path(sys.argv[3])
+    output_path = Path(sys.argv[4])
+    input_path = Path(sys.argv[2])
 
+    # fmt: off
     if mode == "-e":
-        with open(plain_path, "rb") as plain_file, \
+
+        with open(input_path, "rb") as plain_file, \
             open(key_path, "wb") as key_file, \
-            open(encrypted_path, "wb") as enc_file:
+            open(output_path, "wb") as enc_file:
 
             encrypt(plain_file, key_file, enc_file)
-    if mode == "-d":
-        with open(plain_path, "wb") as plain_file, \
+
+    elif mode == "-d":
+
+        with open(input_path, "wb") as plain_file, \
             open(key_path, "rb") as key_file, \
-            open(encrypted_path, "rb") as enc_file:
+            open(output_path, "rb") as enc_file:
 
             decrypt(enc_file, key_file, plain_file)
+    # fmt: on
+
+    else:
+        print(f"Invalid mode: {mode}")
+        print(USAGE)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
